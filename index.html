@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdown 轉資訊圖表工具</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.3.0/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --primary-color-rgb: 52, 152, 219;
+            --secondary-color: #2ecc71;
+            --secondary-color-rgb: 46, 204, 113;
+            --accent-color: #e74c3c;
+            --accent-color-rgb: 231, 76, 60;
+            --text-color: #333333;
+            --background-color: #f8f9fa;
+            --card-background: #ffffff;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--background-color);
+            color: var(--text-color);
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .editor-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding-right: 20px;
+        }
+
+        .preview-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            border-left: 1px solid #ddd;
+            padding-left: 20px;
+        }
+
+        textarea {
+            flex: 1;
+            padding: 15px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            resize: none;
+            margin-bottom: 20px;
+        }
+
+        .control-panel {
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: var(--primary-color);
+            margin-top: 0;
+        }
+
+        .infographic {
+            flex: 1;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 20px;
+            overflow: auto;
+            background-color: var(--card-background);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #2980b9;
+        }
+
+        .color-palette {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .color-option {
+            display: flex;
+            align-items: center;
+            margin-right: 15px;
+        }
+
+        .color-option label {
+            margin-right: 5px;
+        }
+
+        /* 資訊圖表樣式 */
+        .infographic {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .infographic h1 {
+            color: var(--primary-color);
+            text-align: center;
+            font-size: 32px;
+            padding: 15px;
+            background-color: rgba(var(--primary-color-rgb), 0.1);
+            border-radius: 8px;
+            margin: 0 0 20px 0;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .infographic h2 {
+            color: white;
+            background-color: var(--primary-color);
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .infographic h3 {
+            color: var(--secondary-color);
+            border-bottom: 2px solid var(--secondary-color);
+            padding-bottom: 8px;
+            margin: 15px 0 10px 0;
+        }
+
+        .infographic ul, .infographic ol {
+            margin: 10px 0 10px 20px;
+            padding: 0;
+        }
+
+        .infographic ul li {
+            margin-bottom: 12px;
+            position: relative;
+            padding-left: 10px;
+            list-style-position: outside;
+            margin-left: 20px;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .infographic ol li {
+            margin-bottom: 12px;
+            position: relative;
+            padding-left: 5px;
+            list-style-position: outside;
+            margin-left: 20px;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .infographic ul li::before {
+            content: '•';
+            color: var(--accent-color);
+            font-weight: bold;
+            position: absolute;
+            left: -15px;
+        }
+
+        .infographic ol li::marker {
+            color: var(--accent-color);
+            font-weight: bold;
+        }
+
+        .infographic p {
+            margin: 10px 0;
+            line-height: 1.6;
+        }
+
+        .infographic blockquote {
+            background-color: rgba(var(--secondary-color-rgb), 0.1);
+            border-left: 4px solid var(--secondary-color);
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+            font-style: italic;
+        }
+
+        .infographic table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .infographic th {
+            background-color: var(--primary-color);
+            color: white;
+            text-align: left;
+            padding: 12px 15px;
+        }
+
+        .infographic td {
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+        }
+
+        .infographic tr:nth-child(even) {
+            background-color: rgba(var(--primary-color-rgb), 0.05);
+        }
+
+        .infographic tr:hover {
+            background-color: rgba(var(--accent-color-rgb), 0.05);
+        }
+
+        .infographic a {
+            color: var(--accent-color);
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .infographic a:hover {
+            text-decoration: underline;
+        }
+        
+        /* 區塊式設計 */
+        .infographic > h2 {
+            margin-top: 30px;
+        }
+        
+        .infographic > ul,
+        .infographic > ol,
+        .infographic > p,
+        .infographic > blockquote {
+            background-color: var(--card-background);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            margin: 10px 0;
+            border-top: 4px solid var(--secondary-color);
+            width: auto;
+            max-width: 100%;
+            box-sizing: border-box;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        /* 資訊圖模板 */
+        .template {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .template-btn {
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .template-btn:hover {
+            background-color: #27ae60;
+        }
+
+        .layout-options {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .layout-btn {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .orientation-options {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .orientation-btn {
+            background-color: #9b59b6;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .orientation-btn:hover {
+            background-color: #8e44ad;
+        }
+        
+        /* 水平排版樣式 */
+        .orientation-horizontal .infographic {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+        }
+        
+        .orientation-horizontal .infographic > h1 {
+            width: 100%;
+        }
+        
+        .orientation-horizontal .infographic > h2 {
+            width: 100%;
+            margin-top: 20px;
+            clear: both;
+        }
+        
+        .orientation-horizontal .infographic > ul,
+        .orientation-horizontal .infographic > ol,
+        .orientation-horizontal .infographic > p,
+        .orientation-horizontal .infographic > blockquote,
+        .orientation-horizontal .infographic > table {
+            flex: 1 1 300px;
+            margin: 10px;
+            min-width: 250px;
+            max-width: calc(50% - 20px);
+            box-sizing: border-box;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+        
+        .orientation-horizontal.layout-blocks .infographic {
+            flex-flow: row wrap;
+            justify-content: space-around;
+            align-items: flex-start;
+        }
+        
+        .orientation-horizontal.layout-blocks .infographic > h1 {
+            width: 100%;
+        }
+        
+        .orientation-horizontal.layout-blocks .infographic > h2 {
+            width: 100%;
+        }
+        
+        .orientation-horizontal.layout-blocks .infographic > ul,
+        .orientation-horizontal.layout-blocks .infographic > ol,
+        .orientation-horizontal.layout-blocks .infographic > p,
+        .orientation-horizontal.layout-blocks .infographic > blockquote,
+        .orientation-horizontal.layout-blocks .infographic > table {
+            flex: 0 1 calc(50% - 30px);
+            margin: 15px;
+            min-width: 250px;
+            max-width: calc(50% - 30px);
+        }
+        
+        .orientation-horizontal.layout-steps .infographic {
+            flex-direction: row;
+            flex-wrap: wrap;
+        }
+        
+        .orientation-horizontal.layout-steps .infographic > h1,
+        .orientation-horizontal.layout-steps .infographic > h2 {
+            width: 100%;
+        }
+        
+        .orientation-horizontal.layout-steps .infographic > ul,
+        .orientation-horizontal.layout-steps .infographic > ol,
+        .orientation-horizontal.layout-steps .infographic > p,
+        .orientation-horizontal.layout-steps .infographic > blockquote,
+        .orientation-horizontal.layout-steps .infographic > table {
+            flex: 0 0 calc(50% - 40px);
+            margin: 15px 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .orientation-horizontal .infographic > ul,
+            .orientation-horizontal .infographic > ol,
+            .orientation-horizontal .infographic > p,
+            .orientation-horizontal .infographic > blockquote,
+            .orientation-horizontal .infographic > table,
+            .orientation-horizontal.layout-blocks .infographic > ul,
+            .orientation-horizontal.layout-blocks .infographic > ol,
+            .orientation-horizontal.layout-blocks .infographic > p,
+            .orientation-horizontal.layout-blocks .infographic > blockquote,
+            .orientation-horizontal.layout-blocks .infographic > table,
+            .orientation-horizontal.layout-steps .infographic > ul,
+            .orientation-horizontal.layout-steps .infographic > ol,
+            .orientation-horizontal.layout-steps .infographic > p,
+            .orientation-horizontal.layout-steps .infographic > blockquote,
+            .orientation-horizontal.layout-steps .infographic > table {
+                flex: 0 0 100%;
+                max-width: 100%;
+            }
+        }
+
+        /* 佈局樣式 */
+        .layout-modern .infographic {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .layout-modern .infographic > * {
+            background-color: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* 新增區塊式布局 */
+        .layout-blocks .infographic h1 {
+            grid-column: 1 / -1;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 36px;
+            padding: 20px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .layout-blocks .infographic {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            padding: 20px;
+        }
+        
+        .layout-blocks .infographic > h2 {
+            grid-column: 1 / -1;
+            margin: 15px 0;
+            position: relative;
+            padding-left: 20px;
+            background: linear-gradient(90deg, var(--primary-color), transparent);
+        }
+        
+        .layout-blocks .infographic > h2::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 5px;
+            background-color: var(--accent-color);
+        }
+        
+        .layout-blocks .infographic > ul,
+        .layout-blocks .infographic > ol,
+        .layout-blocks .infographic > p,
+        .layout-blocks .infographic > blockquote,
+        .layout-blocks .infographic > table {
+            transform: translateY(0);
+            transition: transform 0.3s ease;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            border-top: 4px solid var(--accent-color);
+        }
+        
+        .layout-blocks .infographic > ul:hover,
+        .layout-blocks .infographic > ol:hover,
+        .layout-blocks .infographic > p:hover,
+        .layout-blocks .infographic > blockquote:hover,
+        .layout-blocks .infographic > table:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
+        }
+        
+        /* 階梯式布局 */
+        .layout-steps .infographic {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .layout-steps .infographic h1 {
+            padding: 25px;
+            background-color: var(--primary-color);
+            color: white;
+            border-radius: 15px 15px 0 0;
+            text-align: center;
+            margin: 0;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .layout-steps .infographic > h2 {
+            margin: 30px 0 10px 30px;
+            width: 80%;
+            position: relative;
+        }
+        
+        .layout-steps .infographic > h2::after {
+            content: '';
+            position: absolute;
+            left: -20px;
+            top: 0;
+            height: 100%;
+            width: 5px;
+            background-color: var(--secondary-color);
+        }
+        
+        .layout-steps .infographic > ul,
+        .layout-steps .infographic > ol,
+        .layout-steps .infographic > p,
+        .layout-steps .infographic > blockquote {
+            margin-left: 60px;
+            width: 85%;
+            position: relative;
+            background-color: var(--card-background);
+            padding: 20px;
+            border-radius: 0 10px 10px 0;
+            border-left: 4px solid var(--accent-color);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .layout-steps .infographic > *:last-child {
+            margin-bottom: 30px;
+        }
+
+        /* 預設主題 */
+        .theme-blue {
+            --primary-color: #3498db;
+            --primary-color-rgb: 52, 152, 219;
+            --secondary-color: #2ecc71;
+            --secondary-color-rgb: 46, 204, 113;
+            --accent-color: #e74c3c;
+            --accent-color-rgb: 231, 76, 60;
+            --text-color: #333333;
+            --background-color: #f8f9fa;
+            --card-background: #ffffff;
+        }
+
+        .theme-dark {
+            --primary-color: #34495e;
+            --primary-color-rgb: 52, 73, 94;
+            --secondary-color: #16a085;
+            --secondary-color-rgb: 22, 160, 133;
+            --accent-color: #f39c12;
+            --accent-color-rgb: 243, 156, 18;
+            --text-color: #ecf0f1;
+            --background-color: #2c3e50;
+            --card-background: #34495e;
+        }
+
+        .theme-pastel {
+            --primary-color: #9b59b6;
+            --primary-color-rgb: 155, 89, 182;
+            --secondary-color: #3498db;
+            --secondary-color-rgb: 52, 152, 219;
+            --accent-color: #e67e22;
+            --accent-color-rgb: 230, 126, 34;
+            --text-color: #333333;
+            --background-color: #f8f9fa;
+            --card-background: #ffffff;
+        }
+
+        .theme-monochrome {
+            --primary-color: #333333;
+            --primary-color-rgb: 51, 51, 51;
+            --secondary-color: #666666;
+            --secondary-color-rgb: 102, 102, 102;
+            --accent-color: #999999;
+            --accent-color-rgb: 153, 153, 153;
+            --text-color: #333333;
+            --background-color: #f8f9fa;
+            --card-background: #ffffff;
+        }
+        
+        /* Pantone 流行色彩主題 */
+        .pantone-viva-magenta {
+            --primary-color: #BB2649;
+            --primary-color-rgb: 187, 38, 73;
+            --secondary-color: #DF6589;
+            --secondary-color-rgb: 223, 101, 137;
+            --accent-color: #5E1127;
+            --accent-color-rgb: 94, 17, 39;
+            --text-color: #333333;
+            --background-color: #FCF2F4;
+            --card-background: #ffffff;
+        }
+        
+        .pantone-peach-fuzz {
+            --primary-color: #FFBE98;
+            --primary-color-rgb: 255, 190, 152;
+            --secondary-color: #FF9B6B;
+            --secondary-color-rgb: 255, 155, 107;
+            --accent-color: #E7895C;
+            --accent-color-rgb: 231, 137, 92;
+            --text-color: #5F4A3C;
+            --background-color: #FFF3ED;
+            --card-background: #ffffff;
+        }
+        
+        .pantone-illuminating {
+            --primary-color: #F5DF4D;
+            --primary-color-rgb: 245, 223, 77;
+            --secondary-color: #E7D62F;
+            --secondary-color-rgb: 231, 214, 47;
+            --accent-color: #939020;
+            --accent-color-rgb: 147, 144, 32;
+            --text-color: #3C3A2A;
+            --background-color: #FFFDF0;
+            --card-background: #ffffff;
+        }
+        
+        .pantone-classic-blue {
+            --primary-color: #0F4C81;
+            --primary-color-rgb: 15, 76, 129;
+            --secondary-color: #3A6EA5;
+            --secondary-color-rgb: 58, 110, 165;
+            --accent-color: #5A92D5;
+            --accent-color-rgb: 90, 146, 213;
+            --text-color: #e9eef5;
+            --background-color: #0A2D4D;
+            --card-background: #153E64;
+        }
+        
+        .pantone-living-coral {
+            --primary-color: #FF6F61;
+            --primary-color-rgb: 255, 111, 97;
+            --secondary-color: #FF9082;
+            --secondary-color-rgb: 255, 144, 130;
+            --accent-color: #E85143;
+            --accent-color-rgb: 232, 81, 67;
+            --text-color: #4A3C3A;
+            --background-color: #FFF2F0;
+            --card-background: #ffffff;
+        }
+        
+        .pantone-greenery {
+            --primary-color: #88B04B;
+            --primary-color-rgb: 136, 176, 75;
+            --secondary-color: #A5C66B;
+            --secondary-color-rgb: 165, 198, 107;
+            --accent-color: #60802C;
+            --accent-color-rgb: 96, 128, 44;
+            --text-color: #3F4A30;
+            --background-color: #F4F9EB;
+            --card-background: #ffffff;
+        }
+
+        /* 調整設備 */
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                height: auto;
+            }
+
+            .editor-panel, .preview-panel {
+                padding: 0;
+                border: none;
+                width: 100%;
+            }
+
+            .preview-panel {
+                margin-top: 20px;
+            }
+            
+            .orientation-horizontal .infographic > ul,
+            .orientation-horizontal .infographic > ol,
+            .orientation-horizontal .infographic > p,
+            .orientation-horizontal .infographic > blockquote,
+            .orientation-horizontal .infographic > table,
+            .orientation-horizontal.layout-blocks .infographic > ul,
+            .orientation-horizontal.layout-blocks .infographic > ol,
+            .orientation-horizontal.layout-blocks .infographic > p,
+            .orientation-horizontal.layout-blocks .infographic > blockquote,
+            .orientation-horizontal.layout-blocks .infographic > table,
+            .orientation-horizontal.layout-steps .infographic > ul,
+            .orientation-horizontal.layout-steps .infographic > ol,
+            .orientation-horizontal.layout-steps .infographic > p,
+            .orientation-horizontal.layout-steps .infographic > blockquote,
+            .orientation-horizontal.layout-steps .infographic > table {
+                flex: 0 0 100%;
+                max-width: 100%;
+                margin-left: 0;
+                margin-right: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="editor-panel">
+            <h1>Markdown 編輯器</h1>
+            <div class="template">
+                <button class="template-btn" onclick="loadTemplate('timeline')">時間軸模板</button>
+                <button class="template-btn" onclick="loadTemplate('comparison')">比較模板</button>
+                <button class="template-btn" onclick="loadTemplate('process')">流程模板</button>
+                <button class="template-btn" onclick="loadTemplate('list')">列表模板</button>
+            </div>
+            <textarea id="markdown-input" placeholder="在此輸入 Markdown 內容..."></textarea>
+            <div class="control-panel">
+                <h3>預設調色盤</h3>
+                <div class="color-palette">
+                    <button onclick="applyTheme('theme-blue')">藍色主題</button>
+                    <button onclick="applyTheme('theme-dark')">深色主題</button>
+                    <button onclick="applyTheme('theme-pastel')">柔和色主題</button>
+                    <button onclick="applyTheme('theme-monochrome')">單色主題</button>
+                </div>
+                <h3>Pantone 流行色彩</h3>
+                <div class="color-palette">
+                    <button onclick="applyPantoneTheme('pantone-viva-magenta')" style="background-color: #BB2649; color: white;">Viva Magenta</button>
+                    <button onclick="applyPantoneTheme('pantone-peach-fuzz')" style="background-color: #FFBE98; color: black;">Peach Fuzz</button>
+                    <button onclick="applyPantoneTheme('pantone-illuminating')" style="background-color: #F5DF4D; color: black;">Illuminating</button>
+                    <button onclick="applyPantoneTheme('pantone-classic-blue')" style="background-color: #0F4C81; color: white;">Classic Blue</button>
+                    <button onclick="applyPantoneTheme('pantone-living-coral')" style="background-color: #FF6F61; color: white;">Living Coral</button>
+                    <button onclick="applyPantoneTheme('pantone-greenery')" style="background-color: #88B04B; color: white;">Greenery</button>
+                </div>
+                <div class="color-option">
+                    <label for="primary-color">主色:</label>
+                    <input type="color" id="primary-color" onchange="updateColor('--primary-color', this.value)">
+                </div>
+                <div class="color-option">
+                    <label for="secondary-color">次色:</label>
+                    <input type="color" id="secondary-color" onchange="updateColor('--secondary-color', this.value)">
+                </div>
+                <div class="color-option">
+                    <label for="accent-color">強調色:</label>
+                    <input type="color" id="accent-color" onchange="updateColor('--accent-color', this.value)">
+                </div>
+                <div class="color-option">
+                    <label for="text-color">文字色:</label>
+                    <input type="color" id="text-color" onchange="updateColor('--text-color', this.value)">
+                </div>
+                <div class="color-option">
+                    <label for="background-color">背景色:</label>
+                    <input type="color" id="background-color" onchange="updateColor('--background-color', this.value)">
+                </div>
+            </div>
+            <div class="layout-options">
+                <button class="layout-btn" onclick="applyLayout('layout-default')">標準佈局</button>
+                <button class="layout-btn" onclick="applyLayout('layout-modern')">現代佈局</button>
+                <button class="layout-btn" onclick="applyLayout('layout-blocks')">區塊式佈局</button>
+                <button class="layout-btn" onclick="applyLayout('layout-steps')">階梯式佈局</button>
+            </div>
+            <div class="orientation-options">
+                <button class="orientation-btn" onclick="applyOrientation('vertical')">垂直排版</button>
+                <button class="orientation-btn" onclick="applyOrientation('horizontal')">水平排版</button>
+            </div>
+            <button onclick="convertToInfographic()">轉換為資訊圖表</button>
+            <button onclick="takeScreenshot()">使用截圖功能</button>
+        </div>
+        <div class="preview-panel">
+            <h1>資訊圖表預覽</h1>
+            <div id="infographic" class="infographic"></div>
+        </div>
+    </div>
+
+    <script>
+        // 初始化顏色選擇器
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('primary-color').value = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim();
+            document.getElementById('secondary-color').value = getComputedStyle(document.documentElement).getPropertyValue('--secondary-color').trim();
+            document.getElementById('accent-color').value = getComputedStyle(document.documentElement).getPropertyValue('--accent-color').trim();
+            document.getElementById('text-color').value = getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim();
+            document.getElementById('background-color').value = getComputedStyle(document.documentElement).getPropertyValue('--background-color').trim();
+
+            // 監聽markdown輸入變化
+            document.getElementById('markdown-input').addEventListener('input', function() {
+                convertToInfographic();
+            });
+
+            // 載入預設範例
+            loadTemplate('list');
+            
+            // 設置默認的排版方向和佈局
+            applyOrientation('vertical');
+            applyLayout('layout-blocks');
+        });
+
+        // 更新顏色
+        function updateColor(property, value) {
+            document.documentElement.style.setProperty(property, value);
+            
+            // 如果是設置主色、次色或強調色，也要更新對應的RGB值
+            if (property === '--primary-color') {
+                const rgb = hexToRgb(value);
+                document.documentElement.style.setProperty('--primary-color-rgb', `${rgb.r}, ${rgb.g}, ${rgb.b}`);
+            } else if (property === '--secondary-color') {
+                const rgb = hexToRgb(value);
+                document.documentElement.style.setProperty('--secondary-color-rgb', `${rgb.r}, ${rgb.g}, ${rgb.b}`);
+            } else if (property === '--accent-color') {
+                const rgb = hexToRgb(value);
+                document.documentElement.style.setProperty('--accent-color-rgb', `${rgb.r}, ${rgb.g}, ${rgb.b}`);
+            }
+        }
+        
+        // 十六進制顏色轉換為RGB
+        function hexToRgb(hex) {
+            // 移除 # 如存在
+            hex = hex.replace('#', '');
+            
+            // 解析十六進制
+            const r = parseInt(hex.substring(0, 2), 16);
+            const g = parseInt(hex.substring(2, 4), 16);
+            const b = parseInt(hex.substring(4, 6), 16);
+            
+            return { r, g, b };
+        }
+
+        // 套用主題
+        function applyTheme(theme) {
+            document.body.className = theme;
+            setTimeout(() => {
+                document.getElementById('primary-color').value = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim();
+                document.getElementById('secondary-color').value = getComputedStyle(document.documentElement).getPropertyValue('--secondary-color').trim();
+                document.getElementById('accent-color').value = getComputedStyle(document.documentElement).getPropertyValue('--accent-color').trim();
+                document.getElementById('text-color').value = getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim();
+                document.getElementById('background-color').value = getComputedStyle(document.documentElement).getPropertyValue('--background-color').trim();
+            }, 50);
+        }
+        
+        // 套用Pantone主題
+        function applyPantoneTheme(theme) {
+            // 移除所有主題相關的類別
+            const themeClasses = Array.from(document.body.classList).filter(cls => 
+                cls.startsWith('theme-') || cls.startsWith('pantone-')
+            );
+            themeClasses.forEach(cls => document.body.classList.remove(cls));
+            
+            // 添加新的Pantone主題類別
+            document.body.classList.add(theme);
+            
+            // 更新顏色選擇器
+            setTimeout(() => {
+                document.getElementById('primary-color').value = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim();
+                document.getElementById('secondary-color').value = getComputedStyle(document.documentElement).getPropertyValue('--secondary-color').trim();
+                document.getElementById('accent-color').value = getComputedStyle(document.documentElement).getPropertyValue('--accent-color').trim();
+                document.getElementById('text-color').value = getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim();
+                document.getElementById('background-color').value = getComputedStyle(document.documentElement).getPropertyValue('--background-color').trim();
+                
+                // 更新RGB值
+                const primaryRgb = hexToRgb(document.getElementById('primary-color').value);
+                const secondaryRgb = hexToRgb(document.getElementById('secondary-color').value);
+                const accentRgb = hexToRgb(document.getElementById('accent-color').value);
+                
+                document.documentElement.style.setProperty('--primary-color-rgb', `${primaryRgb.r}, ${primaryRgb.g}, ${primaryRgb.b}`);
+                document.documentElement.style.setProperty('--secondary-color-rgb', `${secondaryRgb.r}, ${secondaryRgb.g}, ${secondaryRgb.b}`);
+                document.documentElement.style.setProperty('--accent-color-rgb', `${accentRgb.r}, ${accentRgb.g}, ${accentRgb.b}`);
+            }, 50);
+        }
+
+        // 套用佈局
+        function applyLayout(layout) {
+            const container = document.body;
+            
+            // 移除所有佈局相關的類
+            container.classList.remove('layout-default', 'layout-modern', 'layout-blocks', 'layout-steps');
+            
+            // 添加新的佈局類
+            if (layout !== 'layout-default') {
+                container.classList.add(layout);
+            }
+            
+            // 更新預覽
+            convertToInfographic();
+        }
+        
+        // 另一種截圖方式
+        function takeScreenshot() {
+            const infographic = document.getElementById('infographic');
+            
+            // 創建一個模態對話框
+            const modal = document.createElement('div');
+            modal.style.position = 'fixed';
+            modal.style.top = '0';
+            modal.style.left = '0';
+            modal.style.width = '100%';
+            modal.style.height = '100%';
+            modal.style.backgroundColor = 'rgba(0,0,0,0.8)';
+            modal.style.zIndex = '9999';
+            modal.style.display = 'flex';
+            modal.style.flexDirection = 'column';
+            modal.style.alignItems = 'center';
+            modal.style.justifyContent = 'center';
+            modal.style.padding = '20px';
+            modal.style.boxSizing = 'border-box';
+            
+            // 添加說明文字
+            const text = document.createElement('div');
+            text.style.color = 'white';
+            text.style.marginBottom = '20px';
+            text.style.fontSize = '18px';
+            text.style.textAlign = 'center';
+            text.innerHTML = '請使用以下方法截取圖片：<br>1. 按下鍵盤上的 <strong>Print Screen</strong> 鍵<br>2. 或使用截圖工具 (Windows: Win+Shift+S, Mac: Command+Shift+4)<br>3. 將截圖保存到您需要的位置<br><br>完成後點擊任意處關閉此窗口';
+            
+            // 創建一個克隆的資訊圖表
+            const clonedInfograpic = infographic.cloneNode(true);
+            clonedInfograpic.style.backgroundColor = getComputedStyle(document.documentElement).getPropertyValue('--card-background');
+            clonedInfograpic.style.padding = '30px';
+            clonedInfograpic.style.borderRadius = '8px';
+            clonedInfograpic.style.maxWidth = '90%';
+            clonedInfograpic.style.maxHeight = '70vh';
+            clonedInfograpic.style.overflow = 'auto';
+            clonedInfograpic.style.boxShadow = '0 0 20px rgba(0,0,0,0.5)';
+            
+            // 添加到模態框
+            modal.appendChild(text);
+            modal.appendChild(clonedInfograpic);
+            
+            // 點擊任意處關閉
+            modal.addEventListener('click', function() {
+                document.body.removeChild(modal);
+            });
+            
+            // 添加到頁面
+            document.body.appendChild(modal);
+        }
+        
+        // 套用排版方向
+        function applyOrientation(orientation) {
+            const container = document.body;
+            
+            // 移除所有方向相關的類
+            container.classList.remove('orientation-vertical', 'orientation-horizontal');
+            
+            // 添加新的方向類
+            container.classList.add('orientation-' + orientation);
+            
+            // 更新預覽
+            convertToInfographic();
+        }
+        
+        // 下載資訊圖表為圖片
+        function downloadAsImage() {
+            try {
+                // 顯示提示訊息，建議使用截圖功能
+                const message = '由於瀏覽器安全限制，直接導出圖片可能無法正常工作。\n\n請點擊"確定"繼續嘗試，或點擊"取消"使用截圖功能。';
+                if (confirm(message)) {
+                    // 用戶選擇繼續
+                    downloadWithHtml2Canvas();
+                } else {
+                    // 用戶選擇使用截圖功能
+                    takeScreenshot();
+                }
+            } catch (err) {
+                console.error('下載功能錯誤:', err);
+                // 如果有錯誤，直接顯示截圖對話框
+                takeScreenshot();
+            }
+        }
+        
+        // 使用html2canvas嘗試下載
+        function downloadWithHtml2Canvas() {
+            const infographic = document.getElementById('infographic');
+            const originalContent = infographic.innerHTML;
+            
+            try {
+                // 先換成簡單版本的處理方式
+                const userAgent = navigator.userAgent.toLowerCase();
+                
+                if (userAgent.indexOf('firefox') > -1) {
+                    // Firefox專用處理方式
+                    takeScreenshotFirefox();
+                    return;
+                }
+                
+                // 嘗試html2canvas下載
+                const tempDiv = document.createElement('div');
+                tempDiv.style.position = 'absolute';
+                tempDiv.style.left = '-9999px';
+                tempDiv.style.top = '-9999px';
+                
+                // 複製樣式
+                const clone = infographic.cloneNode(true);
+                
+                // 應用計算後的樣式
+                const style = window.getComputedStyle(infographic);
+                clone.style.backgroundColor = style.backgroundColor;
+                clone.style.padding = style.padding;
+                clone.style.width = infographic.offsetWidth + 'px';
+                
+                tempDiv.appendChild(clone);
+                document.body.appendChild(tempDiv);
+                
+                html2canvas(clone, {
+                    allowTaint: true,
+                    useCORS: true,
+                    scale: 2,
+                    backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--card-background'),
+                    onclone: function(clonedDoc) {
+                        const clonedElement = clonedDoc.querySelector('#infographic');
+                        if (clonedElement) {
+                            clonedElement.style.width = infographic.offsetWidth + 'px';
+                            clonedElement.style.border = 'none';
+                            clonedElement.style.boxShadow = 'none';
+                        }
+                    }
+                }).then(function(canvas) {
+                    try {
+                        // 創建下載鏈接
+                        const link = document.createElement('a');
+                        link.href = canvas.toDataURL('image/png');
+                        link.download = 'infographic-' + new Date().toISOString().slice(0, 10) + '.png';
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        document.body.removeChild(tempDiv);
+                    } catch (err) {
+                        console.error('Canvas下載錯誤:', err);
+                        takeScreenshot();
+                    }
+                }).catch(function(err) {
+                    console.error('Canvas生成錯誤:', err);
+                    document.body.removeChild(tempDiv);
+                    takeScreenshot();
+                });
+            } catch (err) {
+                console.error('html2canvas處理錯誤:', err);
+                takeScreenshot();
+            }
+        }
+        
+        // Firefox專用截圖處理
+        function takeScreenshotFirefox() {
+            alert('在Firefox中，請使用以下方式截取圖片：\n1. 右鍵點擊圖表區域\n2. 選擇"使用截圖工具"\n3. 圈選圖表區域\n4. 儲存圖片');
+        }
+
+        // 轉換Markdown為資訊圖表
+        function convertToInfographic() {
+            const markdown = document.getElementById('markdown-input').value;
+            const infographic = document.getElementById('infographic');
+            infographic.innerHTML = marked.parse(markdown);
+        }
+
+        // 載入模板
+        function loadTemplate(type) {
+            let template = '';
+            
+            switch(type) {
+                case 'timeline':
+                    template = `# 專案時間線
+
+## 2023年1月 - 專案啟動
+* 成立團隊
+* 設定目標與範圍
+* 初步研究市場需求
+
+## 2023年3月 - 規劃階段
+* 完成需求分析
+* 確立技術架構
+* 建立專案時程表
+
+## 2023年6月 - 開發階段
+* 前端介面設計完成
+* 後端系統架構建立
+* 資料庫結構設計
+
+## 2023年9月 - 測試階段
+* 進行功能測試
+* 執行壓力測試
+* 修復已發現問題
+
+## 2023年12月 - 發布階段
+* 產品正式上線
+* 開始用戶反饋收集
+* 準備後續功能更新`;
+                    break;
+                case 'comparison':
+                    template = `# 產品比較分析
+
+## 產品 A
+* **價格**: $499
+* **功能**: 基本功能套件
+* **支援**: 電子郵件支援
+* **優點**: 簡單易用、入門價格低
+* **缺點**: 功能有限、擴充性較差
+
+## 產品 B
+* **價格**: $999
+* **功能**: 進階功能套件，含專業工具
+* **支援**: 24/7 電話與電子郵件支援
+* **優點**: 功能完整、專業度高
+* **缺點**: 學習曲線較陡、價格較高
+
+## 產品 C
+* **價格**: $1,499
+* **功能**: 完整企業級解決方案
+* **支援**: 專屬客戶經理，全天候支援
+* **優點**: 企業級整合、高度客製化
+* **缺點**: 使用複雜、價格昂貴
+
+| 特性 | 產品 A | 產品 B | 產品 C |
+|------|--------|--------|--------|
+| 基本功能 | ✓ | ✓ | ✓ |
+| 進階功能 | ✗ | ✓ | ✓ |
+| 企業整合 | ✗ | ✗ | ✓ |
+| 免費更新 | 1年 | 2年 | 3年 |
+| 支援等級 | 基本 | 進階 | 專屬 |`;
+                    break;
+                case 'process':
+                    template = `# 專案開發流程
+
+## 1. 規劃階段
+> 此階段專注於確定專案的目標和範圍，並建立明確的路線圖。
+
+* 確立專案目標
+* 定義專案範圍
+* 識別關鍵利益相關者
+* 建立專案時程與里程碑
+* 進行風險評估
+
+## 2. 設計階段
+> 設計階段將需求轉化為具體的技術規格和視覺設計。
+
+* 創建系統架構
+* 設計用戶界面
+* 建立數據模型
+* 定義API規格
+* 完成低保真與高保真原型
+
+## 3. 開發階段
+> 開發階段專注於根據設計規格實現功能。
+
+* 建立開發環境
+* 實施前端開發
+* 實施後端開發
+* 進行單元測試
+* 實施持續整合
+
+## 4. 測試階段
+> 測試階段確保產品符合質量標準和用戶期望。
+
+* 執行功能測試
+* 進行用戶接受度測試
+* 執行性能測試
+* 進行安全測試
+* 修復發現的問題
+
+## 5. 部署階段
+> 部署階段將產品交付給最終用戶。
+
+* 準備生產環境
+* 執行最終部署檢查
+* 進行數據遷移
+* 部署應用程序
+* 監控初始性能`;
+                    break;
+                case 'list':
+                    template = `# 健康生活指南
+
+## 飲食建議
+* 每天攝取足夠的水分（至少8杯水）
+* 增加蔬果攝取量（每天5份）
+* 選擇全穀類食品
+* 限制加工食品與糖分攝取
+* 適量攝取優質蛋白質
+
+## 運動計劃
+* 每週進行至少150分鐘中等強度有氧運動
+* 每週進行2-3次肌力訓練
+* 每天伸展活動至少10分鐘
+* 減少久坐時間，每小時起身活動5分鐘
+* 選擇自己喜歡的運動方式以維持動力
+
+## 心理健康
+* 每天實踐正念冥想10-15分鐘
+* 保持充足睡眠（7-9小時）
+* 培養有意義的社交關係
+* 設定實際可行的目標
+* 學習壓力管理技巧
+
+## 良好習慣
+* 建立固定的作息時間
+* 保持工作與生活平衡
+* 定期進行健康檢查
+* 避免菸酒等有害物質
+* 培養閱讀等放鬆的嗜好`;
+                    break;
+            }
+            
+            document.getElementById('markdown-input').value = template;
+            convertToInfographic();
+        }
+    </script>
+</body>
+</html>
