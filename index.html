@@ -6,6 +6,7 @@
     <title>Markdown 轉資訊圖表工具</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.3.0/marked.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
     <style>
         :root {
             --primary-color: #3498db;
@@ -49,16 +50,6 @@
             padding-left: 20px;
         }
 
-        textarea {
-            flex: 1;
-            padding: 15px;
-            font-size: 16px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            resize: none;
-            margin-bottom: 20px;
-        }
-
         .control-panel {
             margin-bottom: 20px;
         }
@@ -66,6 +57,105 @@
         h1 {
             color: var(--primary-color);
             margin-top: 0;
+        }
+
+        .editor-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        .editor-toolbar button {
+            margin-right: 0;
+        }
+
+        .design-canvas,
+        .preview-canvas {
+            position: relative;
+            min-height: 480px;
+            border: 2px dashed rgba(var(--primary-color-rgb), 0.35);
+            border-radius: 12px;
+            background-image: linear-gradient(45deg, rgba(var(--primary-color-rgb), 0.05) 25%, transparent 25%, transparent 75%, rgba(var(--primary-color-rgb), 0.05) 75%, rgba(var(--primary-color-rgb), 0.05)),
+                              linear-gradient(45deg, rgba(var(--primary-color-rgb), 0.05) 25%, transparent 25%, transparent 75%, rgba(var(--primary-color-rgb), 0.05) 75%, rgba(var(--primary-color-rgb), 0.05));
+            background-size: 40px 40px;
+            background-position: 0 0, 20px 20px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .design-canvas {
+            background-color: rgba(var(--secondary-color-rgb), 0.08);
+        }
+
+        .preview-canvas {
+            margin: 0 auto 20px;
+            background-color: rgba(var(--primary-color-rgb), 0.02);
+        }
+
+        .canvas-item {
+            position: absolute;
+            background-color: var(--card-background);
+            color: var(--text-color);
+            border-radius: 10px;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            box-shadow: 0 12px 20px rgba(0, 0, 0, 0.08);
+            padding: 16px;
+            cursor: move;
+            user-select: text;
+            transition: box-shadow 0.2s ease, transform 0.2s ease;
+            min-width: 160px;
+            min-height: 80px;
+        }
+
+        .canvas-item:focus {
+            outline: none;
+        }
+
+        .canvas-item.selected {
+            outline: 3px solid var(--accent-color);
+            box-shadow: 0 18px 28px rgba(var(--accent-color-rgb), 0.25);
+        }
+
+        .canvas-item.text-box {
+            font-size: 18px;
+            line-height: 1.6;
+        }
+
+        .canvas-item.list-box {
+            padding: 20px 30px;
+            list-style: disc;
+            list-style-position: inside;
+        }
+
+        .canvas-item.list-box li {
+            margin-bottom: 10px;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+
+        .canvas-item.list-box li::marker {
+            color: var(--accent-color);
+            font-weight: 600;
+        }
+
+        .canvas-item.image-box {
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .canvas-item.image-box img {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .canvas-instructions {
+            font-size: 14px;
+            color: rgba(0, 0, 0, 0.6);
+            margin-top: -10px;
+            margin-bottom: 20px;
         }
 
         .infographic {
@@ -316,6 +406,27 @@
             background-color: #8e44ad;
         }
         
+        .infographic .preview-canvas {
+            width: 100%;
+        }
+
+        .orientation-vertical .design-canvas,
+        .orientation-vertical .preview-canvas {
+            aspect-ratio: 3 / 4;
+            max-width: 640px;
+        }
+
+        .orientation-horizontal .design-canvas,
+        .orientation-horizontal .preview-canvas {
+            aspect-ratio: 16 / 9;
+            max-width: 900px;
+        }
+
+        .orientation-horizontal .preview-canvas,
+        .orientation-vertical .preview-canvas {
+            width: 100%;
+        }
+
         /* 水平排版樣式 */
         .orientation-horizontal .infographic {
             display: flex;
@@ -390,7 +501,23 @@
             flex: 0 0 calc(50% - 40px);
             margin: 15px 20px;
         }
-        
+
+        .layout-modern .preview-canvas {
+            background-color: rgba(var(--secondary-color-rgb), 0.12);
+        }
+
+        .layout-modern .preview-canvas .canvas-item {
+            border-radius: 18px;
+        }
+
+        .layout-blocks .preview-canvas .canvas-item {
+            border-top: 6px solid var(--secondary-color);
+        }
+
+        .layout-steps .preview-canvas .canvas-item {
+            box-shadow: 0 20px 30px rgba(var(--accent-color-rgb), 0.15);
+        }
+
         @media (max-width: 768px) {
             .orientation-horizontal .infographic > ul,
             .orientation-horizontal .infographic > ol,
@@ -701,14 +828,21 @@
 <body>
     <div class="container">
         <div class="editor-panel">
-            <h1>Markdown 編輯器</h1>
+            <h1>資訊圖表編輯器</h1>
             <div class="template">
                 <button class="template-btn" onclick="loadTemplate('timeline')">時間軸模板</button>
                 <button class="template-btn" onclick="loadTemplate('comparison')">比較模板</button>
                 <button class="template-btn" onclick="loadTemplate('process')">流程模板</button>
                 <button class="template-btn" onclick="loadTemplate('list')">列表模板</button>
             </div>
-            <textarea id="markdown-input" placeholder="在此輸入 Markdown 內容..."></textarea>
+            <div class="editor-toolbar">
+                <button onclick="addCanvasItem('text')">新增文字框</button>
+                <button onclick="addCanvasItem('list')">新增 Bullet List</button>
+                <button onclick="addCanvasItem('image')">新增圖片</button>
+                <button onclick="deleteSelectedItem()">刪除選取元件</button>
+            </div>
+            <div class="canvas-instructions">拖曳元件以調整位置，拉動邊框即可縮放。雙擊文字元件即可編輯內容。</div>
+            <div id="canvas" class="design-canvas" contenteditable="false"></div>
             <div class="control-panel">
                 <h3>預設調色盤</h3>
                 <div class="color-palette">
@@ -768,6 +902,9 @@
 
     <script>
         // 初始化顏色選擇器
+        let selectedCanvasItem = null;
+        let canvasMutationObserver = null;
+
         document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('primary-color').value = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim();
             document.getElementById('secondary-color').value = getComputedStyle(document.documentElement).getPropertyValue('--secondary-color').trim();
@@ -775,23 +912,278 @@
             document.getElementById('text-color').value = getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim();
             document.getElementById('background-color').value = getComputedStyle(document.documentElement).getPropertyValue('--background-color').trim();
 
-            // 監聽markdown輸入變化
-            document.getElementById('markdown-input').addEventListener('input', function() {
-                convertToInfographic();
-            });
+            initializeCanvas();
 
             // 載入預設範例
             loadTemplate('list');
-            
+
             // 設置默認的排版方向和佈局
             applyOrientation('vertical');
             applyLayout('layout-blocks');
+
+            updatePreview();
         });
+
+        function initializeCanvas() {
+            const canvas = document.getElementById('canvas');
+            if (!canvas) {
+                return;
+            }
+
+            canvas.addEventListener('mousedown', function(event) {
+                if (event.target === canvas) {
+                    clearSelection();
+                }
+            });
+
+            canvas.addEventListener('click', function(event) {
+                if (event.target === canvas) {
+                    clearSelection();
+                }
+            });
+
+            canvas.addEventListener('input', function() {
+                updatePreview();
+            }, true);
+
+            if (canvasMutationObserver) {
+                canvasMutationObserver.disconnect();
+            }
+
+            canvasMutationObserver = new MutationObserver(function() {
+                updatePreview();
+            });
+
+            canvasMutationObserver.observe(canvas, {
+                childList: true,
+                subtree: true,
+                characterData: true
+            });
+
+            document.addEventListener('keydown', function(event) {
+                if ((event.key === 'Delete' || event.key === 'Backspace') && selectedCanvasItem) {
+                    const activeElement = document.activeElement;
+                    if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA' || activeElement.isContentEditable)) {
+                        return;
+                    }
+
+                    event.preventDefault();
+                    deleteSelectedItem();
+                }
+            });
+        }
+
+        function addCanvasItem(type) {
+            let preset = { type };
+            if (type === 'image') {
+                const url = prompt('請輸入圖片網址：');
+                if (!url) {
+                    return;
+                }
+                preset.imageUrl = url;
+                preset.width = 320;
+                preset.height = 220;
+            }
+
+            const canvas = document.getElementById('canvas');
+            if (!canvas) {
+                return;
+            }
+
+            const offset = canvas.children.length * 24;
+            preset.x = 40 + (offset % 200);
+            preset.y = 40 + (offset % 160);
+
+            const element = buildCanvasItem(preset);
+            if (!element) {
+                return;
+            }
+
+            canvas.appendChild(element);
+            makeInteractable(element);
+            selectCanvasItem(element);
+            updatePreview();
+        }
+
+        function buildCanvasItem(preset) {
+            const { type } = preset;
+            let element = null;
+
+            if (type === 'text') {
+                element = document.createElement('div');
+                element.classList.add('canvas-item', 'text-box');
+                element.contentEditable = 'true';
+                element.innerHTML = preset.content || '雙擊以編輯文字內容';
+            } else if (type === 'list') {
+                element = document.createElement('ul');
+                element.classList.add('canvas-item', 'list-box');
+                element.contentEditable = 'true';
+                element.innerHTML = preset.content || '<li>新增重點 1</li><li>新增重點 2</li><li>新增重點 3</li>';
+            } else if (type === 'image') {
+                element = document.createElement('div');
+                element.classList.add('canvas-item', 'image-box');
+                element.contentEditable = 'false';
+
+                const img = document.createElement('img');
+                img.src = preset.imageUrl || 'https://via.placeholder.com/640x360.png?text=Image';
+                img.alt = '資訊圖表圖片';
+                element.appendChild(img);
+            }
+
+            if (!element) {
+                return null;
+            }
+
+            element.dataset.type = type;
+            element.dataset.x = preset.x ?? 40;
+            element.dataset.y = preset.y ?? 40;
+            element.style.transform = `translate(${element.dataset.x}px, ${element.dataset.y}px)`;
+
+            if (preset.width) {
+                element.style.width = typeof preset.width === 'number' ? `${preset.width}px` : preset.width;
+            }
+
+            if (preset.height) {
+                element.style.height = typeof preset.height === 'number' ? `${preset.height}px` : preset.height;
+            }
+
+            element.setAttribute('tabindex', '0');
+            attachCanvasItemEvents(element);
+            return element;
+        }
+
+        function attachCanvasItemEvents(element) {
+            element.addEventListener('mousedown', function(event) {
+                event.stopPropagation();
+                selectCanvasItem(element);
+            });
+
+            element.addEventListener('click', function(event) {
+                event.stopPropagation();
+                selectCanvasItem(element);
+            });
+
+            element.addEventListener('focus', function() {
+                selectCanvasItem(element);
+            });
+
+            if (element.isContentEditable) {
+                element.addEventListener('input', function() {
+                    updatePreview();
+                });
+            }
+        }
+
+        function makeInteractable(element) {
+            interact(element)
+                .draggable({
+                    listeners: {
+                        move(event) {
+                            const target = event.target;
+                            const x = (parseFloat(target.dataset.x) || 0) + event.dx;
+                            const y = (parseFloat(target.dataset.y) || 0) + event.dy;
+                            target.dataset.x = x;
+                            target.dataset.y = y;
+                            target.style.transform = `translate(${x}px, ${y}px)`;
+                            updatePreview();
+                        }
+                    },
+                    modifiers: [
+                        interact.modifiers.restrictRect({
+                            restriction: 'parent',
+                            endOnly: true
+                        })
+                    ]
+                })
+                .resizable({
+                    edges: { left: true, right: true, bottom: true, top: true },
+                    modifiers: [
+                        interact.modifiers.restrictEdges({
+                            outer: 'parent'
+                        }),
+                        interact.modifiers.restrictSize({
+                            min: { width: 140, height: 80 }
+                        })
+                    ],
+                    listeners: {
+                        move(event) {
+                            const target = event.target;
+                            const x = (parseFloat(target.dataset.x) || 0) + event.deltaRect.left;
+                            const y = (parseFloat(target.dataset.y) || 0) + event.deltaRect.top;
+
+                            target.style.width = `${event.rect.width}px`;
+                            target.style.height = `${event.rect.height}px`;
+                            target.dataset.x = x;
+                            target.dataset.y = y;
+                            target.style.transform = `translate(${x}px, ${y}px)`;
+                            updatePreview();
+                        }
+                    }
+                });
+        }
+
+        function selectCanvasItem(element) {
+            if (selectedCanvasItem && selectedCanvasItem !== element) {
+                selectedCanvasItem.classList.remove('selected');
+            }
+
+            selectedCanvasItem = element;
+
+            if (selectedCanvasItem) {
+                selectedCanvasItem.classList.add('selected');
+            }
+        }
+
+        function clearSelection() {
+            if (selectedCanvasItem) {
+                selectedCanvasItem.classList.remove('selected');
+            }
+            selectedCanvasItem = null;
+        }
+
+        function deleteSelectedItem() {
+            if (!selectedCanvasItem) {
+                return;
+            }
+
+            const canvas = document.getElementById('canvas');
+            if (canvas && canvas.contains(selectedCanvasItem)) {
+                interact(selectedCanvasItem).unset();
+                canvas.removeChild(selectedCanvasItem);
+            }
+
+            selectedCanvasItem = null;
+            updatePreview();
+        }
+
+        function updatePreview() {
+            const canvas = document.getElementById('canvas');
+            const preview = document.getElementById('infographic');
+            if (!canvas || !preview) {
+                return;
+            }
+
+            const clone = canvas.cloneNode(true);
+            clone.id = 'preview-canvas';
+            clone.classList.remove('design-canvas');
+            clone.classList.add('preview-canvas');
+
+            clone.querySelectorAll('.canvas-item').forEach(function(item) {
+                item.classList.remove('selected');
+                if (item.isContentEditable) {
+                    item.setAttribute('contenteditable', 'false');
+                }
+                item.removeAttribute('tabindex');
+            });
+
+            preview.innerHTML = '';
+            preview.appendChild(clone);
+        }
 
         // 更新顏色
         function updateColor(property, value) {
             document.documentElement.style.setProperty(property, value);
-            
+
             // 如果是設置主色、次色或強調色，也要更新對應的RGB值
             if (property === '--primary-color') {
                 const rgb = hexToRgb(value);
@@ -1036,161 +1428,118 @@
             alert('在Firefox中，請使用以下方式截取圖片：\n1. 右鍵點擊圖表區域\n2. 選擇"使用截圖工具"\n3. 圈選圖表區域\n4. 儲存圖片');
         }
 
-        // 轉換Markdown為資訊圖表
+        // 更新預覽資訊圖表
         function convertToInfographic() {
-            const markdown = document.getElementById('markdown-input').value;
-            const infographic = document.getElementById('infographic');
-            infographic.innerHTML = marked.parse(markdown);
+            updatePreview();
         }
 
-        // 載入模板
+        // 載入畫布模板
         function loadTemplate(type) {
-            let template = '';
-            
-            switch(type) {
-                case 'timeline':
-                    template = `# 專案時間線
-
-## 2023年1月 - 專案啟動
-* 成立團隊
-* 設定目標與範圍
-* 初步研究市場需求
-
-## 2023年3月 - 規劃階段
-* 完成需求分析
-* 確立技術架構
-* 建立專案時程表
-
-## 2023年6月 - 開發階段
-* 前端介面設計完成
-* 後端系統架構建立
-* 資料庫結構設計
-
-## 2023年9月 - 測試階段
-* 進行功能測試
-* 執行壓力測試
-* 修復已發現問題
-
-## 2023年12月 - 發布階段
-* 產品正式上線
-* 開始用戶反饋收集
-* 準備後續功能更新`;
-                    break;
-                case 'comparison':
-                    template = `# 產品比較分析
-
-## 產品 A
-* **價格**: $499
-* **功能**: 基本功能套件
-* **支援**: 電子郵件支援
-* **優點**: 簡單易用、入門價格低
-* **缺點**: 功能有限、擴充性較差
-
-## 產品 B
-* **價格**: $999
-* **功能**: 進階功能套件，含專業工具
-* **支援**: 24/7 電話與電子郵件支援
-* **優點**: 功能完整、專業度高
-* **缺點**: 學習曲線較陡、價格較高
-
-## 產品 C
-* **價格**: $1,499
-* **功能**: 完整企業級解決方案
-* **支援**: 專屬客戶經理，全天候支援
-* **優點**: 企業級整合、高度客製化
-* **缺點**: 使用複雜、價格昂貴
-
-| 特性 | 產品 A | 產品 B | 產品 C |
-|------|--------|--------|--------|
-| 基本功能 | ✓ | ✓ | ✓ |
-| 進階功能 | ✗ | ✓ | ✓ |
-| 企業整合 | ✗ | ✗ | ✓ |
-| 免費更新 | 1年 | 2年 | 3年 |
-| 支援等級 | 基本 | 進階 | 專屬 |`;
-                    break;
-                case 'process':
-                    template = `# 專案開發流程
-
-## 1. 規劃階段
-> 此階段專注於確定專案的目標和範圍，並建立明確的路線圖。
-
-* 確立專案目標
-* 定義專案範圍
-* 識別關鍵利益相關者
-* 建立專案時程與里程碑
-* 進行風險評估
-
-## 2. 設計階段
-> 設計階段將需求轉化為具體的技術規格和視覺設計。
-
-* 創建系統架構
-* 設計用戶界面
-* 建立數據模型
-* 定義API規格
-* 完成低保真與高保真原型
-
-## 3. 開發階段
-> 開發階段專注於根據設計規格實現功能。
-
-* 建立開發環境
-* 實施前端開發
-* 實施後端開發
-* 進行單元測試
-* 實施持續整合
-
-## 4. 測試階段
-> 測試階段確保產品符合質量標準和用戶期望。
-
-* 執行功能測試
-* 進行用戶接受度測試
-* 執行性能測試
-* 進行安全測試
-* 修復發現的問題
-
-## 5. 部署階段
-> 部署階段將產品交付給最終用戶。
-
-* 準備生產環境
-* 執行最終部署檢查
-* 進行數據遷移
-* 部署應用程序
-* 監控初始性能`;
-                    break;
-                case 'list':
-                    template = `# 健康生活指南
-
-## 飲食建議
-* 每天攝取足夠的水分（至少8杯水）
-* 增加蔬果攝取量（每天5份）
-* 選擇全穀類食品
-* 限制加工食品與糖分攝取
-* 適量攝取優質蛋白質
-
-## 運動計劃
-* 每週進行至少150分鐘中等強度有氧運動
-* 每週進行2-3次肌力訓練
-* 每天伸展活動至少10分鐘
-* 減少久坐時間，每小時起身活動5分鐘
-* 選擇自己喜歡的運動方式以維持動力
-
-## 心理健康
-* 每天實踐正念冥想10-15分鐘
-* 保持充足睡眠（7-9小時）
-* 培養有意義的社交關係
-* 設定實際可行的目標
-* 學習壓力管理技巧
-
-## 良好習慣
-* 建立固定的作息時間
-* 保持工作與生活平衡
-* 定期進行健康檢查
-* 避免菸酒等有害物質
-* 培養閱讀等放鬆的嗜好`;
-                    break;
+            const canvas = document.getElementById('canvas');
+            if (!canvas) {
+                return;
             }
-            
-            document.getElementById('markdown-input').value = template;
-            convertToInfographic();
+
+            Array.from(canvas.querySelectorAll('.canvas-item')).forEach(function(item) {
+                interact(item).unset();
+            });
+
+            canvas.innerHTML = '';
+
+            const templates = {
+                timeline: [
+                    {
+                        type: 'text',
+                        content: '<strong>專案時間線</strong><br>掌握 2023 年度重要節點',
+                        x: 60,
+                        y: 40,
+                        width: 360,
+                        height: 160
+                    },
+                    {
+                        type: 'list',
+                        content: '<li><strong>1 月</strong> — 團隊成立與市場研究</li><li><strong>3 月</strong> — 完成需求分析與技術規劃</li><li><strong>6 月</strong> — 前後端開發同步進行</li><li><strong>9 月</strong> — 功能測試與壓力驗證</li><li><strong>12 月</strong> — 正式上線並啟動優化</li>',
+                        x: 80,
+                        y: 240,
+                        width: 420,
+                        height: 260
+                    }
+                ],
+                comparison: [
+                    {
+                        type: 'text',
+                        content: '<strong>產品比較分析</strong><br>三款方案一次看懂',
+                        x: 60,
+                        y: 40,
+                        width: 380,
+                        height: 150
+                    },
+                    {
+                        type: 'list',
+                        content: '<li><strong>產品 A：</strong> 入門價格、基本功能、電子郵件支援</li><li><strong>產品 B：</strong> 進階工具、專業服務、全年無休支援</li><li><strong>產品 C：</strong> 企業級整合、高度客製化、專屬顧問</li>',
+                        x: 80,
+                        y: 220,
+                        width: 420,
+                        height: 220
+                    },
+                    {
+                        type: 'text',
+                        content: '選擇重點：依預算、擴充需求與支援等級做評估。',
+                        x: 100,
+                        y: 470,
+                        width: 360,
+                        height: 120
+                    }
+                ],
+                process: [
+                    {
+                        type: 'text',
+                        content: '<strong>專案開發流程</strong><br>五大階段循序打造',
+                        x: 60,
+                        y: 40,
+                        width: 400,
+                        height: 160
+                    },
+                    {
+                        type: 'list',
+                        content: '<li><strong>規劃：</strong> 明確目標與里程碑</li><li><strong>設計：</strong> 視覺稿與資料模型定稿</li><li><strong>開發：</strong> 前後端協作與單元測試</li><li><strong>測試：</strong> 功能、壓力與安全驗證</li><li><strong>部署：</strong> 正式上線與效能監控</li>',
+                        x: 80,
+                        y: 240,
+                        width: 420,
+                        height: 260
+                    }
+                ],
+                list: [
+                    {
+                        type: 'text',
+                        content: '<strong>健康生活指南</strong><br>養成全方位好習慣',
+                        x: 60,
+                        y: 40,
+                        width: 420,
+                        height: 160
+                    },
+                    {
+                        type: 'list',
+                        content: '<li><strong>飲食：</strong> 多蔬果、足量飲水、減少加工食品</li><li><strong>運動：</strong> 每週 150 分鐘有氧 + 2 次肌力訓練</li><li><strong>心理：</strong> 正念練習與規律睡眠</li><li><strong>成長：</strong> 設定可達成的短期與長期目標</li>',
+                        x: 80,
+                        y: 240,
+                        width: 440,
+                        height: 240
+                    }
+                ]
+            };
+
+            const items = templates[type] || [];
+            items.forEach(function(preset) {
+                const element = buildCanvasItem(preset);
+                if (element) {
+                    canvas.appendChild(element);
+                    makeInteractable(element);
+                }
+            });
+
+            clearSelection();
+            updatePreview();
         }
     </script>
 </body>
